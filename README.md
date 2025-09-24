@@ -1,6 +1,30 @@
-# Web Shelf
+<a id="readme-top"></a>
+<!-- PROJECT SHIELDS -->
+[![Contributors][contributors-shield]][contributors-url]
+[![Forks][forks-shield]][forks-url]
+[![Stargazers][stars-shield]][stars-url]
+[![Issues][issues-shield]][issues-url]
+[![License][license-shield]][license-url]
 
-Web Shelf 是一款带有 iOS 风格玻璃拟态界面的单页书签管理器。它运行在浏览器端，支持网站与文件夹的增删改查、自定义背景、多设备一致的拖拽交互以及 `localStorage` 持久化。在 README 中列出了核心功能、开发体验、截图预览与贡献指引，帮助你快速上手并定制属于自己的浏览器起始页。
+<!-- PROJECT LOGO -->
+<br />
+<div align="center">
+
+[//]: # (  <a href="#">)
+
+[//]: # (    <img src="doc/images/logo.svg" alt="Logo" width="80" height="80">)
+
+[//]: # (  </a>)
+
+<h3 align="center">Web Shelf</h3>
+
+  <p align="center">
+    一款带好看的玻璃拟态界面的单页书签管理器
+    <br />
+    让你的浏览器起始页更有质感, 轻松管理常用网站
+  </p>
+</div>
+Web Shelf 是一款好看的玻璃拟态界面的单页书签管理器。它运行在浏览器端，支持网站与文件夹的增删改查、自定义背景、多设备一致的拖拽交互以及 `localStorage` 持久化。在 README 中列出了核心功能、开发体验、截图预览与贡献指引，帮助你快速上手并定制属于自己的浏览器起始页。
 
 ![主页预览](doc/1.home.png)
 
@@ -56,3 +80,16 @@ web_shelf/
 4. **手动验证**：确保在 Chrome/Safari/Firefox 进行基本操作验证，数据持久化与拖拽交互应正常工作。
 
 有任何问题或想法，欢迎在仓库讨论区留言，一起把 Web Shelf 打造成更好用的标签页工具。🚀
+
+<!-- MARKDOWN LINKS & IMAGES -->
+<!-- https://www.markdownguide.org/basic-syntax/#reference-style-links -->
+[contributors-shield]: https://img.shields.io/github/contributors/onlyGuo/web_shelf.svg?style=for-the-badge
+[contributors-url]: https://github.com/onlyGuo/web_shelf/graphs/contributors
+[forks-shield]: https://img.shields.io/github/forks/onlyGuo/web_shelf.svg?style=for-the-badge
+[forks-url]: https://github.com/onlyGuo/web_shelf/network/members
+[stars-shield]: https://img.shields.io/github/stars/onlyGuo/web_shelf.svg?style=for-the-badge
+[stars-url]: https://github.com/onlyGuo/Cloudflare-Faker/stargazers
+[issues-shield]: https://img.shields.io/github/issues/onlyGuo/web_shelf.svg?style=for-the-badge
+[issues-url]: https://github.com/onlyGuo/web_shelf/issues
+[license-shield]: https://img.shields.io/github/license/onlyGuo/web_shelf.svg?style=for-the-badge
+[license-url]: https://github.com/onlyGuo/web_shelf/blob/master/LICENSE
