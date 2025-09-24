@@ -1,0 +1,2267 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Web Shelf</title>
+    <style>
+        :root {
+            color-scheme: light;
+            --app-background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            --glass-panel: rgba(255, 255, 255, 0.16);
+            --glass-border: rgba(255, 255, 255, 0.22);
+            --text-primary: #ffffff;
+            --text-secondary: rgba(255, 255, 255, 0.7);
+            --tile-size: 110px;
+            --shadow-strong: 0 18px 45px rgba(20, 22, 40, 0.25);
+            --shadow-soft: 0 10px 25px rgba(20, 22, 40, 0.16);
+        }
+
+        * {
+            box-sizing: border-box;
+        }
+
+        body {
+            margin: 0;
+            font-family: "SF Pro Display", "SF Pro Text", -apple-system, BlinkMacSystemFont, "Helvetica Neue", Arial, sans-serif;
+            min-height: 100vh;
+            background: var(--app-background);
+            background-size: cover;
+            background-position: center;
+            background-attachment: fixed;
+            color: var(--text-primary);
+            transition: background 0.5s ease;
+        }
+
+        /*body::before {*/
+        /*    content: "";*/
+        /*    position: fixed;*/
+        /*    inset: 0;*/
+        /*    backdrop-filter: blur(18px);*/
+        /*    mask-image: linear-gradient(180deg, rgba(255,255,255,0.35), rgba(255,255,255,0.9));*/
+        /*    pointer-events: none;*/
+        /*    z-index: -1;*/
+        /*}*/
+
+        body.custom-image::before {
+            background: rgba(12, 14, 32, 0.45);
+            mask: none;
+        }
+
+        .sr-only {
+            position: absolute;
+            width: 1px;
+            height: 1px;
+            padding: 0;
+            margin: -1px;
+            overflow: hidden;
+            clip: rect(0, 0, 0, 0);
+            border: 0;
+        }
+
+        .app-shell {
+            max-width: 1180px;
+            margin: 0 auto;
+            padding: 56px 28px 64px;
+        }
+
+        header {
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            margin-bottom: 32px;
+        }
+
+        header h1 {
+            font-size: 34px;
+            font-weight: 600;
+            letter-spacing: 0.4px;
+            margin: 0;
+            text-shadow: 0 4px 24px rgba(0, 0, 0, 0.28);
+        }
+
+        .mode-toggle {
+            width: 46px;
+            height: 46px;
+            border-radius: 50%;
+            border: 1px solid rgba(255, 255, 255, 0.35);
+            background: rgba(255, 255, 255, 0.22);
+            box-shadow: 0 12px 24px rgba(16, 18, 32, 0.25);
+            display: grid;
+            place-items: center;
+            cursor: pointer;
+            transition: transform 0.18s ease, box-shadow 0.18s ease, background 0.18s ease;
+        }
+
+        .mode-toggle svg {
+            width: 22px;
+            height: 22px;
+            color: rgba(255, 255, 255, 0.9);
+        }
+
+        .mode-toggle:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 16px 40px rgba(12, 14, 30, 0.36);
+            background: rgba(255, 255, 255, 0.3);
+        }
+
+        .mode-toggle[data-active="true"] {
+            background: linear-gradient(140deg, #6366f1, #8b5cf6);
+            border-color: rgba(255, 255, 255, 0.6);
+        }
+
+        .mode-toggle[data-active="true"] svg {
+            color: #ffffff;
+        }
+
+        .toolbar {
+            display: flex;
+            flex-wrap: wrap;
+            gap: 16px;
+            align-items: center;
+            margin-bottom: 32px;
+        }
+
+        .search-field {
+            flex: 1 1 260px;
+            position: relative;
+        }
+
+        .search-field input {
+            width: 100%;
+            padding: 12px 18px 12px 44px;
+            border-radius: 28px;
+            border: 1px solid var(--glass-border);
+            background: var(--glass-panel);
+            color: var(--text-primary);
+            font-size: 15px;
+            outline: none;
+            box-shadow: var(--shadow-soft);
+            backdrop-filter: saturate(1.6) blur(18px);
+            transition: border-color 0.2s ease;
+        }
+
+        .search-field input::placeholder {
+            color: var(--text-secondary);
+        }
+
+        .search-field svg {
+            position: absolute;
+            left: 16px;
+            top: 50%;
+            transform: translateY(-50%);
+            width: 18px;
+            height: 18px;
+            fill: var(--text-secondary);
+        }
+
+        .toolbar button {
+            border: none;
+            border-radius: 24px;
+            padding: 11px 20px;
+            font-size: 14px;
+            font-weight: 500;
+            color: var(--text-primary);
+            background: rgba(255, 255, 255, 0.18);
+            box-shadow: var(--shadow-soft);
+            backdrop-filter: blur(18px);
+            cursor: pointer;
+            transition: transform 0.2s ease, box-shadow 0.2s ease, background 0.2s ease;
+        }
+
+        .toolbar button:hover {
+            transform: translateY(-1px);
+            background: rgba(255, 255, 255, 0.25);
+            box-shadow: var(--shadow-strong);
+        }
+
+        .toolbar button:active {
+            transform: translateY(1px);
+        }
+
+        .actions button {
+            border: none;
+            border-radius: 24px;
+            padding: 11px 20px;
+            font-size: 14px;
+            font-weight: 500;
+            color: var(--text-primary);
+            background: rgba(255, 255, 255, 0.18);
+            box-shadow: var(--shadow-soft);
+            backdrop-filter: blur(18px);
+            cursor: pointer;
+            transition: transform 0.2s ease, box-shadow 0.2s ease, background 0.2s ease;
+        }
+
+        .actions button:hover {
+            transform: translateY(-1px);
+            background: rgba(255, 255, 255, 0.25);
+            box-shadow: var(--shadow-strong);
+        }
+
+        .grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fill, minmax(var(--tile-size), 1fr));
+            gap: 22px;
+        }
+
+        .tile {
+            position: relative;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            justify-content: flex-start;
+            gap: 12px;
+            padding: 18px 16px 14px;
+            border-radius: 28px;
+            background: rgba(255, 255, 255, 0.18);
+            border: 1px solid rgba(255, 255, 255, 0.24);
+            box-shadow: var(--shadow-soft);
+            text-align: center;
+            color: var(--text-primary);
+            backdrop-filter: blur(24px);
+            transition: transform 0.18s ease, box-shadow 0.18s ease;
+        }
+
+        .tile.non-draggable {
+            cursor: default;
+        }
+
+        .tile:hover {
+            transform: translateY(-3px);
+            box-shadow: var(--shadow-strong);
+        }
+
+        .tile:active {
+            transform: translateY(1px);
+        }
+
+        .tile.dragging {
+            opacity: 0.35;
+            transform: scale(0.92);
+            box-shadow: 0 16px 48px rgba(10, 12, 35, 0.35);
+        }
+
+        .tile.drag-hidden {
+            display: none !important;
+        }
+
+        .tile.drop-target {
+            outline: 2px dashed rgba(255, 255, 255, 0.55);
+            outline-offset: 6px;
+        }
+
+        .tile.drop-before::before,
+        .tile.drop-after::before {
+            content: "";
+            position: absolute;
+            left: 18%;
+            right: 18%;
+            height: 4px;
+            border-radius: 999px;
+            background: rgba(255, 255, 255, 0.85);
+            box-shadow: 0 0 12px rgba(255, 255, 255, 0.7);
+        }
+
+        .tile.drop-before::before {
+            top: 10px;
+        }
+
+        .tile.drop-after::before {
+            bottom: 10px;
+        }
+
+        .tile.drop-into {
+            transform: scale(1.06);
+            box-shadow: 0 22px 60px rgba(10, 12, 35, 0.32);
+        }
+
+        .tile.drop-placeholder {
+            border: 2px dashed rgba(255, 255, 255, 0.45);
+            border-radius: 28px;
+            background: rgba(255, 255, 255, 0.08);
+            pointer-events: none;
+        }
+
+        .grid.drop-accepting {
+            position: relative;
+            outline: 2px dashed rgba(255, 255, 255, 0.42);
+            outline-offset: 12px;
+            animation: dropPulse 1s ease-in-out infinite alternate;
+        }
+
+        @keyframes dropPulse {
+            0% {
+                outline-color: rgba(255, 255, 255, 0.3);
+            }
+            100% {
+                outline-color: rgba(255, 255, 255, 0.65);
+            }
+        }
+
+        .tile-icon {
+            width: 72px;
+            height: 72px;
+            border-radius: 22px;
+            display: grid;
+            place-items: center;
+            background: rgba(255, 255, 255, 0.82);
+            overflow: hidden;
+            box-shadow: inset 0 1px 3px rgba(255, 255, 255, 0.45), 0 10px 30px rgba(18, 20, 35, 0.25);
+        }
+
+        .tile-icon img {
+            width: 44px;
+            height: 44px;
+            border-radius: 12px;
+        }
+
+        .tile-icon.fallback {
+            background: linear-gradient(140deg, rgba(255, 255, 255, 0.28), rgba(255, 255, 255, 0.08));
+            color: rgba(255, 255, 255, 0.92);
+            font-weight: 600;
+            letter-spacing: 1px;
+            font-size: 22px;
+            text-transform: uppercase;
+        }
+
+        .tile-icon.fallback::after {
+            content: attr(data-initials);
+        }
+
+        .tile label {
+            font-size: 13px;
+            font-weight: 500;
+            color: var(--text-primary);
+            overflow: hidden;
+            text-overflow: ellipsis;
+            white-space: nowrap;
+            max-width: 90px;
+        }
+
+        .tile small {
+            font-size: 11px;
+            color: var(--text-secondary);
+            display: block;
+            max-width: 100%;
+            white-space: nowrap;
+            overflow: hidden;
+            text-overflow: ellipsis;
+        }
+
+        .tile-meta {
+            font-size: 11px;
+            color: rgba(255, 255, 255, 0.65);
+            display: block;
+            margin-top: -4px;
+        }
+
+        .tile.folder .tile-icon {
+            background: linear-gradient(150deg, rgba(255,255,255,0.92), rgba(255,255,255,0.65));
+            border: 1px solid rgba(255,255,255,0.6);
+        }
+
+        .tile.folder .tile-icon::before {
+            content: "📁";
+            font-size: 34px;
+            color: #5a5fbf;
+        }
+
+        .tile-quick-actions {
+            position: absolute;
+            top: 10px;
+            right: 10px;
+            display: flex;
+            gap: 6px;
+            opacity: 0;
+            transform: translateY(-4px);
+            transition: opacity 0.2s ease, transform 0.2s ease;
+        }
+
+        .tile-quick-actions button {
+            width: 26px;
+            height: 26px;
+            border-radius: 50%;
+            border: 1px solid rgba(255, 255, 255, 0.45);
+            background: rgba(0, 0, 0, 0.35);
+            color: #fff;
+            font-size: 12px;
+            line-height: 1;
+            display: grid;
+            place-items: center;
+            cursor: pointer;
+        }
+
+        .tile-quick-actions button:hover {
+            background: rgba(0, 0, 0, 0.55);
+        }
+
+        .tile:hover .tile-quick-actions,
+        body.editing .tile-quick-actions {
+            opacity: 1;
+            transform: translateY(0);
+        }
+
+        .empty-hint {
+            margin-top: 60px;
+            text-align: center;
+            color: var(--text-secondary);
+            font-size: 15px;
+        }
+
+        .folder-panel {
+            position: fixed;
+            inset: 0;
+            background: rgba(10, 12, 25, 0.58);
+            backdrop-filter: blur(28px);
+            -webkit-backdrop-filter: blur(28px);
+            padding: 48px 24px 60px;
+            z-index: 30;
+            opacity: 0;
+            visibility: hidden;
+            pointer-events: none;
+            transition: opacity 0.28s ease, visibility 0.28s ease;
+        }
+
+        .folder-panel.open {
+            opacity: 1;
+            visibility: visible;
+            pointer-events: auto;
+        }
+
+        .folder-panel.drop-home::after {
+            content: "释放移出文件夹";
+            position: fixed;
+            inset: 0;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            color: rgba(255, 255, 255, 0.86);
+            font-size: 18px;
+            letter-spacing: 1px;
+            background: rgba(15, 18, 38, 0.45);
+            border: 2px dashed rgba(255, 255, 255, 0.4);
+            backdrop-filter: blur(8px);
+        }
+
+        .folder-sheet-wrap {
+            max-width: 1040px;
+            margin: 0 auto;
+            transform: translateY(36px) scale(0.96);
+            opacity: 0;
+            transition: transform 0.32s cubic-bezier(0.2, 0.8, 0.25, 1), opacity 0.25s ease;
+            will-change: transform, opacity;
+        }
+
+        .folder-panel.open .folder-sheet-wrap {
+            transform: translateY(0) scale(1);
+            opacity: 1;
+        }
+
+        .folder-sheet {
+            width: 100%;
+            background: rgba(255, 255, 255, 0.18);
+            border-radius: 36px;
+            padding: 36px 40px;
+            backdrop-filter: blur(30px);
+            -webkit-backdrop-filter: blur(30px);
+            border: 1px solid rgba(255, 255, 255, 0.26);
+            box-shadow: 0 25px 60px rgba(10, 12, 30, 0.35);
+        }
+
+        .folder-header {
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            gap: 16px;
+            margin-bottom: 32px;
+        }
+
+        .folder-header h2 {
+            margin: 0;
+            font-size: 24px;
+            font-weight: 600;
+        }
+
+        .folder-header .actions {
+            display: flex;
+            gap: 12px;
+        }
+
+        .folder-header .actions button {
+            padding: 9px 16px;
+            border-radius: 18px;
+            font-size: 13px;
+        }
+
+        .modal {
+            position: fixed;
+            inset: 0;
+            background: rgba(4, 7, 18, 0.65);
+            display: none;
+            align-items: center;
+            justify-content: center;
+            z-index: 40;
+            padding: 24px;
+        }
+
+        .modal.open {
+            display: flex;
+        }
+
+        .modal-card {
+            width: min(420px, 100%);
+            background: rgba(255, 255, 255, 0.92);
+            border-radius: 28px;
+            padding: 28px 32px;
+            color: #1f2336;
+            box-shadow: 0 24px 42px rgba(0, 0, 0, 0.35);
+            position: relative;
+        }
+
+        .modal-card h3 {
+            margin-top: 0;
+            margin-bottom: 18px;
+            font-size: 20px;
+            font-weight: 600;
+        }
+
+        .modal-card label {
+            display: block;
+            margin-bottom: 6px;
+            font-weight: 500;
+        }
+
+        .modal-card input,
+        .modal-card select {
+            width: 100%;
+            padding: 11px 14px;
+            border-radius: 16px;
+            border: 1px solid rgba(45, 55, 85, 0.18);
+            font-size: 14px;
+            margin-bottom: 16px;
+            background: rgba(255, 255, 255, 0.86);
+        }
+
+        .modal-card .modal-actions {
+            display: flex;
+            justify-content: flex-end;
+            gap: 12px;
+        }
+
+        .modal-card button {
+            border-radius: 18px;
+            border: none;
+            padding: 9px 18px;
+            font-size: 14px;
+            font-weight: 500;
+            cursor: pointer;
+        }
+
+        .modal-card .primary {
+            background: linear-gradient(120deg, #6366f1, #8b5cf6);
+            color: #fff;
+        }
+
+        .modal-card .ghost {
+            background: rgba(92, 100, 148, 0.12);
+            color: #3f4466;
+        }
+
+        .background-swatches {
+            display: grid;
+            grid-template-columns: repeat(auto-fill, minmax(120px, 1fr));
+            gap: 12px;
+            margin-bottom: 20px;
+        }
+
+        .background-swatches button {
+            height: 72px;
+            border-radius: 20px;
+            border: none;
+            cursor: pointer;
+            position: relative;
+            overflow: hidden;
+            box-shadow: 0 10px 20px rgba(0, 0, 0, 0.22);
+        }
+
+        .background-swatches button::after {
+            content: attr(data-label);
+            position: absolute;
+            left: 12px;
+            bottom: 10px;
+            font-size: 12px;
+            color: rgba(255, 255, 255, 0.9);
+            letter-spacing: 0.3px;
+            text-shadow: 0 8px 16px rgba(0, 0, 0, 0.35);
+        }
+
+        .toast {
+            position: fixed;
+            left: 50%;
+            bottom: 40px;
+            transform: translateX(-50%) translateY(100px);
+            padding: 12px 18px;
+            background: rgba(24, 26, 48, 0.9);
+            color: #fff;
+            border-radius: 18px;
+            font-size: 14px;
+            box-shadow: 0 18px 45px rgba(12, 13, 25, 0.42);
+            opacity: 0;
+            transition: transform 0.3s ease, opacity 0.3s ease;
+            z-index: 50;
+        }
+
+        .toast.show {
+            transform: translateX(-50%) translateY(0);
+            opacity: 1;
+        }
+
+        @media (max-width: 720px) {
+            header {
+                flex-direction: column;
+                align-items: flex-start;
+                gap: 12px;
+            }
+
+            .app-shell {
+                padding: 42px 18px 48px;
+            }
+
+            :root {
+                --tile-size: 94px;
+            }
+        }
+    </style>
+</head>
+<body>
+    <div class="app-shell">
+        <header>
+<!--            <h1>Web Shelf</h1>-->
+            <h1>牛逼页</h1>
+            <button id="editToggle" class="mode-toggle" title="切换编辑模式" aria-pressed="false" aria-label="切换编辑模式">
+                <span class="sr-only">切换编辑模式</span>
+                <svg viewBox="0 0 24 24" aria-hidden="true">
+                    <path d="M3 17.25V21h3.75L17.81 9.94l-3.75-3.75L3 17.25z" fill="currentColor" stroke="none"></path>
+                    <path d="M20.71 7.04a1 1 0 0 0 0-1.41L18.37 3.29a1 1 0 0 0-1.41 0l-1.83 1.83 3.75 3.75 1.83-1.83z" fill="currentColor" stroke="none"></path>
+                </svg>
+            </button>
+        </header>
+
+        <div class="toolbar">
+            <div class="search-field">
+                <svg viewBox="0 0 24 24" aria-hidden="true">
+                    <path d="M15.5 14h-.79l-.28-.27a6.5 6.5 0 1 0-.71.71l.27.28v.79l5 4.99L20.49 19l-4.99-5zm-6 0C7.01 14 5 11.99 5 9.5S7.01 5 9.5 5 14 7.01 14 9.5 11.99 14 9.5 14z" />
+                </svg>
+                <input type="search" id="searchInput" placeholder="搜索网站或文件夹">
+            </div>
+            <button id="addSiteBtn">添加网站</button>
+            <button id="addFolderBtn">创建文件夹</button>
+            <button id="backgroundBtn">更换背景</button>
+        </div>
+
+        <section>
+            <div id="homeGrid" class="grid" aria-live="polite"></div>
+            <div id="emptyHint" class="empty-hint" hidden>还没有书签，点击「添加网站」快速开始。</div>
+        </section>
+    </div>
+
+    <div id="folderPanel" class="folder-panel" aria-hidden="true">
+        <div class="folder-sheet-wrap">
+            <div class="folder-sheet">
+                <div class="folder-header">
+                    <div>
+                        <button id="folderBackBtn" class="ghost" style="margin-bottom: 8px; padding: 8px 16px; border-radius: 20px; background: rgba(255,255,255,0.22); border: 1px solid rgba(255,255,255,0.3); color: var(--text-primary);">◀ 返回</button>
+                        <h2 id="folderTitle"></h2>
+                    </div>
+                    <div class="actions">
+                        <button id="renameFolderBtn">重命名</button>
+                        <button id="deleteFolderBtn">删除</button>
+                    </div>
+                </div>
+                <div class="toolbar" style="margin-bottom: 20px;">
+                    <button id="addSiteInsideBtn">在此文件夹添加网站</button>
+                </div>
+                <div id="folderGrid" class="grid"></div>
+                <div id="folderEmptyHint" class="empty-hint" hidden>文件夹为空，添加一个网站试试。</div>
+            </div>
+        </div>
+    </div>
+
+    <div class="modal" id="siteModal" role="dialog" aria-modal="true" aria-labelledby="siteModalTitle">
+        <div class="modal-card">
+            <h3 id="siteModalTitle">添加网站</h3>
+            <form id="siteForm">
+                <label for="siteName">网站名称</label>
+                <input type="text" id="siteName" name="siteName" placeholder="例如：GitHub" required>
+
+                <label for="siteUrl">网站地址</label>
+                <input type="url" id="siteUrl" name="siteUrl" placeholder="例如：https://github.com" required>
+
+                <label for="siteFolder">所属文件夹</label>
+                <select id="siteFolder" name="siteFolder">
+                    <option value="">不放入文件夹</option>
+                </select>
+
+                <div class="modal-actions">
+                    <button type="button" class="ghost" data-close="siteModal">取消</button>
+                    <button type="submit" class="primary">保存</button>
+                </div>
+            </form>
+        </div>
+    </div>
+
+    <div class="modal" id="folderModal" role="dialog" aria-modal="true" aria-labelledby="folderModalTitle">
+        <div class="modal-card">
+            <h3 id="folderModalTitle">新建文件夹</h3>
+            <form id="folderForm">
+                <label for="folderName">文件夹名称</label>
+                <input type="text" id="folderName" name="folderName" placeholder="例如：工作" required>
+
+                <div class="modal-actions">
+                    <button type="button" class="ghost" data-close="folderModal">取消</button>
+                    <button type="submit" class="primary">保存</button>
+                </div>
+            </form>
+        </div>
+    </div>
+
+    <div class="modal" id="backgroundModal" role="dialog" aria-modal="true" aria-labelledby="backgroundModalTitle">
+        <div class="modal-card">
+            <h3 id="backgroundModalTitle">自定义背景</h3>
+            <div class="background-swatches" id="gradientOptions"></div>
+            <form id="backgroundForm">
+                <label for="backgroundUrl">使用图片链接</label>
+                <input type="url" id="backgroundUrl" name="backgroundUrl" placeholder="粘贴一张图片地址">
+                <div class="modal-actions">
+                    <button type="button" class="ghost" id="resetBackgroundBtn">恢复默认</button>
+                    <button type="button" class="ghost" data-close="backgroundModal">关闭</button>
+                    <button type="submit" class="primary">应用</button>
+                </div>
+            </form>
+        </div>
+    </div>
+
+    <div id="toast" class="toast" role="status" aria-live="polite"></div>
+
+    <script>
+        (function () {
+            const STORAGE_KEYS = {
+                items: 'webshelf_items_v2',
+                folders: 'webshelf_folders_v2',
+                background: 'webshelf_background_v2'
+            };
+
+            const DEFAULT_BACKGROUND = 'linear-gradient(135deg, #667eea 0%, #764ba2 100%)';
+
+            const ICONS = {
+                edit: '<svg viewBox="0 0 24 24" aria-hidden="true"><path d="M3 17.25V21h3.75L17.81 9.94l-3.75-3.75L3 17.25z" fill="currentColor" stroke="none"></path><path d="M20.71 7.04a1 1 0 0 0 0-1.41L18.37 3.29a1 1 0 0 0-1.41 0l-1.83 1.83 3.75 3.75 1.83-1.83z" fill="currentColor" stroke="none"></path></svg>',
+                done: '<svg viewBox="0 0 24 24" aria-hidden="true"><polyline points="5 12.5 10 17 19 8" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"></polyline></svg>'
+            };
+
+            const gradients = [
+                { id: 'aurora', label: '极光', value: 'linear-gradient(135deg, #5ee7df 0%, #b490ca 100%)' },
+                { id: 'sunset', label: '暮色', value: 'linear-gradient(140deg, #ff758c 0%, #ff7eb3 100%)' },
+                { id: 'ocean', label: '海岸', value: 'linear-gradient(140deg, #36d1dc 0%, #5b86e5 100%)' },
+                { id: 'forest', label: '森林', value: 'linear-gradient(135deg, #5f72bd 0%, #9b23ea 100%)' },
+                { id: 'candy', label: '糖果', value: 'linear-gradient(135deg, #f6d365 0%, #fda085 100%)' },
+                { id: 'night', label: '夜幕', value: 'linear-gradient(135deg, #1f1c2c 0%, #928dab 100%)' }
+            ];
+
+            const state = {
+                items: [],
+                folders: [],
+                background: null,
+                editingSiteId: null,
+                editingFolderId: null,
+                activeFolderId: null,
+                editMode: false,
+                toastTimer: null,
+                dragContext: null
+            };
+
+            const elements = {
+                homeGrid: document.getElementById('homeGrid'),
+                folderGrid: document.getElementById('folderGrid'),
+                emptyHint: document.getElementById('emptyHint'),
+                folderEmptyHint: document.getElementById('folderEmptyHint'),
+                searchInput: document.getElementById('searchInput'),
+                siteModal: document.getElementById('siteModal'),
+                folderModal: document.getElementById('folderModal'),
+                backgroundModal: document.getElementById('backgroundModal'),
+                toast: document.getElementById('toast'),
+                siteForm: document.getElementById('siteForm'),
+                folderForm: document.getElementById('folderForm'),
+                backgroundForm: document.getElementById('backgroundForm'),
+                siteName: document.getElementById('siteName'),
+                siteUrl: document.getElementById('siteUrl'),
+                siteFolderSelect: document.getElementById('siteFolder'),
+                siteModalTitle: document.getElementById('siteModalTitle'),
+                folderModalTitle: document.getElementById('folderModalTitle'),
+                folderName: document.getElementById('folderName'),
+                editToggle: document.getElementById('editToggle'),
+                folderPanel: document.getElementById('folderPanel'),
+                folderTitle: document.getElementById('folderTitle'),
+                folderBackBtn: document.getElementById('folderBackBtn'),
+                renameFolderBtn: document.getElementById('renameFolderBtn'),
+                deleteFolderBtn: document.getElementById('deleteFolderBtn'),
+                addSiteInsideBtn: document.getElementById('addSiteInsideBtn'),
+                backgroundUrl: document.getElementById('backgroundUrl'),
+                gradientOptions: document.getElementById('gradientOptions'),
+                resetBackgroundBtn: document.getElementById('resetBackgroundBtn'),
+                addSiteBtn: document.getElementById('addSiteBtn'),
+                addFolderBtn: document.getElementById('addFolderBtn'),
+                backgroundBtn: document.getElementById('backgroundBtn')
+            };
+
+            function init() {
+                loadState();
+                buildGradientOptions();
+                attachEvents();
+                elements.folderGrid.dataset.container = 'folder:none';
+                applyBackground();
+                renderAll();
+                updateEditToggle();
+            }
+
+            function loadState() {
+                try {
+                    const storedItems = JSON.parse(localStorage.getItem(STORAGE_KEYS.items) || '[]');
+                    const storedFolders = JSON.parse(localStorage.getItem(STORAGE_KEYS.folders) || '[]');
+                    const storedBackground = JSON.parse(localStorage.getItem(STORAGE_KEYS.background) || 'null');
+                    state.items = Array.isArray(storedItems) ? storedItems : [];
+                    state.folders = Array.isArray(storedFolders) ? storedFolders : [];
+                    state.background = storedBackground;
+                } catch (error) {
+                    console.warn('读取本地数据失败，将使用默认示例数据。', error);
+                    state.items = [];
+                    state.folders = [];
+                    state.background = null;
+                }
+
+                if (state.items.length === 0 && state.folders.length === 0) {
+                    const folderId = generateId();
+                    state.folders = [
+                        { id: folderId, name: '常用' },
+                        { id: generateId(), name: '收藏' }
+                    ];
+                    state.items = [
+                        { id: generateId(), name: 'GitHub', url: 'https://github.com', folderId: folderId },
+                        { id: generateId(), name: '谷歌搜索', url: 'https://www.google.com', folderId: null },
+                        { id: generateId(), name: 'MDN', url: 'https://developer.mozilla.org', folderId: folderId }
+                    ];
+                }
+
+                ensureOrdering();
+            }
+
+            function ensureOrdering() {
+                normalizeHomeOrder();
+                const folderMap = new Map();
+                state.items.forEach(item => {
+                    if (!item.folderId) return;
+                    if (!folderMap.has(item.folderId)) {
+                        folderMap.set(item.folderId, []);
+                    }
+                    folderMap.get(item.folderId).push(item);
+                });
+                folderMap.forEach((items, folderId) => normalizeFolderOrder(folderId, items));
+            }
+
+            function normalizeHomeOrder() {
+                const entries = [];
+                state.folders.forEach(folder => {
+                    entries.push({ type: 'folder', entity: folder });
+                });
+                state.items
+                    .filter(item => !item.folderId)
+                    .forEach(item => {
+                        entries.push({ type: 'site', entity: item });
+                    });
+
+                entries.sort((a, b) => orderValue(a.entity.homeOrder) - orderValue(b.entity.homeOrder));
+                entries.forEach((entry, index) => {
+                    entry.entity.homeOrder = index;
+                });
+
+                return entries;
+            }
+
+            function normalizeFolderOrder(folderId, items = null) {
+                const list = items || state.items.filter(item => item.folderId === folderId);
+                list.sort((a, b) => orderValue(a.folderOrder) - orderValue(b.folderOrder));
+                list.forEach((item, index) => {
+                    item.folderOrder = index;
+                });
+                return list;
+            }
+
+            function orderValue(value) {
+                return typeof value === 'number' ? value : Number.MAX_SAFE_INTEGER;
+            }
+
+            function saveState() {
+                localStorage.setItem(STORAGE_KEYS.items, JSON.stringify(state.items));
+                localStorage.setItem(STORAGE_KEYS.folders, JSON.stringify(state.folders));
+                localStorage.setItem(STORAGE_KEYS.background, JSON.stringify(state.background));
+            }
+
+            function attachEvents() {
+                elements.searchInput.addEventListener('input', renderHome);
+                elements.addSiteBtn.addEventListener('click', () => openSiteModal());
+                elements.addFolderBtn.addEventListener('click', () => openFolderModal());
+                elements.backgroundBtn.addEventListener('click', () => {
+                    if (state.background && state.background.type === 'image') {
+                        elements.backgroundUrl.value = state.background.value;
+                    } else {
+                        elements.backgroundUrl.value = '';
+                    }
+                    openModal('backgroundModal');
+                });
+                elements.editToggle.addEventListener('click', toggleEditMode);
+                elements.searchInput.addEventListener('keydown', handleSearchKeydown);
+                elements.folderBackBtn.addEventListener('click', closeFolderPanel);
+                elements.folderPanel.addEventListener('click', (event) => {
+                    if (event.target === elements.folderPanel) {
+                        closeFolderPanel();
+                    }
+                });
+                elements.folderPanel.addEventListener('dragenter', handlePanelDragEnter);
+                elements.folderPanel.addEventListener('dragleave', handlePanelDragLeave);
+                elements.folderPanel.addEventListener('dragover', handlePanelDragOver);
+                elements.folderPanel.addEventListener('drop', handlePanelDrop);
+                elements.renameFolderBtn.addEventListener('click', () => openFolderModal(state.activeFolderId));
+                elements.deleteFolderBtn.addEventListener('click', () => deleteFolder(state.activeFolderId));
+                elements.addSiteInsideBtn.addEventListener('click', () => openSiteModal(state.activeFolderId));
+
+                document.querySelectorAll('.modal [data-close]').forEach(btn => {
+                    btn.addEventListener('click', (event) => {
+                        closeModal(event.currentTarget.getAttribute('data-close'));
+                    });
+                });
+
+                elements.siteForm.addEventListener('submit', handleSiteSubmit);
+                elements.folderForm.addEventListener('submit', handleFolderSubmit);
+                elements.backgroundForm.addEventListener('submit', handleBackgroundSubmit);
+                elements.resetBackgroundBtn.addEventListener('click', resetBackground);
+
+                elements.homeGrid.addEventListener('click', handleHomeGridClick);
+                elements.folderGrid.addEventListener('click', handleFolderGridClick);
+                elements.homeGrid.addEventListener('dragenter', handleGridDragEnter);
+                elements.homeGrid.addEventListener('dragleave', handleGridDragLeave);
+                elements.homeGrid.addEventListener('dragover', handleGridDragOver);
+                elements.homeGrid.addEventListener('drop', handleGridDrop);
+                elements.folderGrid.addEventListener('dragenter', handleGridDragEnter);
+                elements.folderGrid.addEventListener('dragleave', handleGridDragLeave);
+                elements.folderGrid.addEventListener('dragover', handleGridDragOver);
+                elements.folderGrid.addEventListener('drop', handleGridDrop);
+            }
+
+            function handleSearchKeydown(event) {
+                if (event.key !== 'Enter') {
+                    return;
+                }
+                const keyword = elements.searchInput.value.trim();
+                if (!keyword) {
+                    return;
+                }
+                const isSearchMode = elements.homeGrid.dataset.container === 'search';
+                if (!isSearchMode) {
+                    return;
+                }
+                const firstTile = elements.homeGrid.querySelector('.tile');
+                if (!firstTile) {
+                    return;
+                }
+                event.preventDefault();
+                if (state.editMode) {
+                    toggleEditMode();
+                }
+                const type = firstTile.dataset.type;
+                const id = firstTile.dataset.id;
+                if (type === 'site') {
+                    openSite(id);
+                } else if (type === 'folder') {
+                    openFolderPanel(id);
+                }
+            }
+
+            function buildGradientOptions() {
+                elements.gradientOptions.innerHTML = '';
+                gradients.forEach((gradient) => {
+                    const button = document.createElement('button');
+                    button.type = 'button';
+                    button.style.background = gradient.value;
+                    button.dataset.gradientId = gradient.id;
+                    button.dataset.label = gradient.label;
+                    button.addEventListener('click', () => {
+                        state.background = { type: 'gradient', value: gradient.value };
+                        applyBackground();
+                        saveState();
+                        showToast('已应用背景主题');
+                    });
+                    elements.gradientOptions.appendChild(button);
+                });
+            }
+
+            function handleHomeGridClick(event) {
+                const tile = event.target.closest('.tile');
+                if (!tile) return;
+
+                const id = tile.dataset.id;
+                const type = tile.dataset.type;
+
+                const actionBtn = event.target.closest('button[data-action]');
+                if (actionBtn) {
+                    const action = actionBtn.dataset.action;
+                    if (type === 'site') {
+                        if (action === 'edit-site') {
+                            openSiteModal(null, id);
+                        } else if (action === 'delete-site') {
+                            deleteSite(id);
+                        }
+                    } else if (type === 'folder') {
+                        if (action === 'edit-folder') {
+                            openFolderModal(id);
+                        } else if (action === 'delete-folder') {
+                            deleteFolder(id);
+                        }
+                    }
+                    return;
+                }
+
+                if (state.editMode) {
+                    return;
+                }
+
+                if (type === 'site') {
+                    openSite(id);
+                } else if (type === 'folder') {
+                    openFolderPanel(id);
+                }
+            }
+
+            function handleFolderGridClick(event) {
+                const tile = event.target.closest('.tile');
+                if (!tile) return;
+                const id = tile.dataset.id;
+                const actionBtn = event.target.closest('button[data-action]');
+                if (actionBtn) {
+                    const action = actionBtn.dataset.action;
+                    if (action === 'edit-site') {
+                        openSiteModal(state.activeFolderId, id);
+                    } else if (action === 'delete-site') {
+                        deleteSite(id);
+                    }
+                    return;
+                }
+
+                if (!state.editMode) {
+                    openSite(id);
+                }
+            }
+
+            function openSite(id) {
+                const site = state.items.find(item => item.id === id);
+                if (!site) return;
+                window.open(site.url, '_blank', 'noopener,noreferrer');
+            }
+
+            function openSiteModal(folderId = null, editingId = null) {
+                state.editingSiteId = editingId;
+
+                if (editingId) {
+                    const site = state.items.find(item => item.id === editingId);
+                    if (!site) return;
+                    elements.siteModalTitle.textContent = '编辑网站';
+                    elements.siteName.value = site.name;
+                    elements.siteUrl.value = site.url;
+                    populateFolderSelect(site.folderId);
+                    elements.siteFolderSelect.value = site.folderId || '';
+                } else {
+                    elements.siteModalTitle.textContent = '添加网站';
+                    elements.siteForm.reset();
+                    populateFolderSelect(folderId);
+                    if (folderId) {
+                        elements.siteFolderSelect.value = folderId;
+                    }
+                }
+
+                openModal('siteModal');
+                elements.siteName.focus();
+            }
+
+            function openFolderModal(editingId = null) {
+                state.editingFolderId = editingId || null;
+                if (editingId) {
+                    const folder = state.folders.find(f => f.id === editingId);
+                    if (!folder) return;
+                    elements.folderModalTitle.textContent = '重命名文件夹';
+                    elements.folderName.value = folder.name;
+                } else {
+                    elements.folderModalTitle.textContent = '新建文件夹';
+                    elements.folderForm.reset();
+                }
+                openModal('folderModal');
+                elements.folderName.focus();
+            }
+
+            function populateFolderSelect(preferredId = null) {
+                elements.siteFolderSelect.innerHTML = '<option value="">不放入文件夹</option>';
+                state.folders
+                    .slice()
+                    .sort((a, b) => a.name.localeCompare(b.name, 'zh'))
+                    .forEach(folder => {
+                        const option = document.createElement('option');
+                        option.value = folder.id;
+                        option.textContent = folder.name;
+                        elements.siteFolderSelect.appendChild(option);
+                    });
+                if (preferredId) {
+                    elements.siteFolderSelect.value = preferredId;
+                }
+            }
+
+            function handleSiteSubmit(event) {
+                event.preventDefault();
+                const formData = new FormData(event.target);
+                const name = formData.get('siteName').trim();
+                const url = formData.get('siteUrl').trim();
+                const folderId = formData.get('siteFolder').trim() || null;
+
+                if (!name || !url) {
+                    showToast('请填写完整的网站信息');
+                    return;
+                }
+
+                if (state.editingSiteId) {
+                    const site = state.items.find(item => item.id === state.editingSiteId);
+                    if (site) {
+                        const previousFolder = site.folderId;
+                        site.name = name;
+                        site.url = url;
+                        if (previousFolder !== folderId) {
+                            if (folderId) {
+                                moveSiteIntoFolder(site.id, folderId);
+                            } else {
+                                moveSiteToHome(site.id);
+                            }
+                        } else {
+                            if (folderId) {
+                                normalizeFolderOrder(folderId);
+                            } else {
+                                normalizeHomeOrder();
+                            }
+                        }
+                    }
+                    showToast('网站已更新');
+                } else {
+                    const newSite = {
+                        id: generateId(),
+                        name,
+                        url,
+                        folderId,
+                        homeOrder: folderId ? undefined : state.items.filter(item => !item.folderId).length,
+                        folderOrder: folderId ? state.items.filter(item => item.folderId === folderId).length : undefined
+                    };
+                    state.items.push(newSite);
+                    if (folderId) {
+                        normalizeFolderOrder(folderId);
+                    } else {
+                        normalizeHomeOrder();
+                    }
+                    showToast('已添加网站');
+                }
+
+                saveState();
+                closeModal('siteModal');
+                state.editingSiteId = null;
+                renderAll();
+            }
+
+            function handleFolderSubmit(event) {
+                event.preventDefault();
+                const name = event.target.folderName.value.trim();
+                if (!name) {
+                    showToast('请输入文件夹名称');
+                    return;
+                }
+
+                if (state.editingFolderId) {
+                    const folder = state.folders.find(f => f.id === state.editingFolderId);
+                    if (folder) {
+                        folder.name = name;
+                        showToast('文件夹已重命名');
+                    }
+                } else {
+                    const newFolder = {
+                        id: generateId(),
+                        name,
+                        homeOrder: state.folders.length
+                    };
+                    state.folders.push(newFolder);
+                    normalizeHomeOrder();
+                    showToast('已创建文件夹');
+                }
+
+                saveState();
+                closeModal('folderModal');
+                state.editingFolderId = null;
+                renderAll();
+            }
+
+            function openFolderPanel(folderId) {
+                state.activeFolderId = folderId;
+                const folder = state.folders.find(f => f.id === folderId);
+                if (!folder) {
+                    closeFolderPanel();
+                    return;
+                }
+
+                elements.folderTitle.textContent = folder.name;
+                elements.folderPanel.classList.add('open');
+                elements.folderPanel.setAttribute('aria-hidden', 'false');
+                renderFolderGrid();
+            }
+
+            function closeFolderPanel() {
+                state.activeFolderId = null;
+                elements.folderPanel.classList.remove('open');
+                elements.folderPanel.setAttribute('aria-hidden', 'true');
+                elements.folderGrid.dataset.container = 'folder:none';
+            }
+
+            function deleteSite(id) {
+                const site = state.items.find(item => item.id === id);
+                if (!site) return;
+                if (!confirm(`确定要删除 “${site.name}” 吗？`)) return;
+                state.items = state.items.filter(item => item.id !== id);
+                if (site.folderId) {
+                    normalizeFolderOrder(site.folderId);
+                }
+                normalizeHomeOrder();
+                saveState();
+                renderAll();
+                showToast('网站已删除');
+            }
+
+            function deleteFolder(id) {
+                if (!id) return;
+                const folder = state.folders.find(f => f.id === id);
+                if (!folder) return;
+                if (!confirm(`删除文件夹 “${folder.name}” 后，内部网站将移动到未分类。继续吗？`)) return;
+
+                const itemsToMove = state.items.filter(item => item.folderId === id);
+                let nextHomeOrder = state.items.filter(item => !item.folderId).length;
+                itemsToMove.forEach(item => {
+                    item.folderId = null;
+                    item.folderOrder = undefined;
+                    item.homeOrder = nextHomeOrder++;
+                });
+
+                state.folders = state.folders.filter(f => f.id !== id);
+                normalizeHomeOrder();
+                saveState();
+                if (state.activeFolderId === id) {
+                    closeFolderPanel();
+                }
+                renderAll();
+                showToast('文件夹已删除');
+            }
+
+            function renderAll() {
+                populateFolderSelect();
+                renderHome();
+                if (state.activeFolderId) {
+                    renderFolderGrid();
+                }
+            }
+
+            function renderHome() {
+                const keywordRaw = elements.searchInput.value.trim();
+                const keyword = keywordRaw.toLowerCase();
+                const hasKeyword = keyword.length > 0;
+                const entries = normalizeHomeOrder();
+                elements.homeGrid.dataset.container = hasKeyword ? 'search' : 'home';
+                elements.homeGrid.innerHTML = '';
+
+                let renderCount = 0;
+
+                if (hasKeyword) {
+                    const folderOrderMap = new Map();
+                    state.folders.forEach(folder => {
+                        folderOrderMap.set(folder.id, orderValue(folder.homeOrder));
+                    });
+
+                    const folderMatches = state.folders
+                        .filter(folder => folder.name.toLowerCase().includes(keyword))
+                        .sort((a, b) => orderValue(a.homeOrder) - orderValue(b.homeOrder));
+
+                    folderMatches.forEach(folder => {
+                        elements.homeGrid.appendChild(createFolderTile(folder, { disableDrag: true }));
+                        renderCount += 1;
+                    });
+
+                    const siteMatches = state.items
+                        .filter(item => {
+                            const name = (item.name || '').toLowerCase();
+                            const url = (item.url || '').toLowerCase();
+                            return name.includes(keyword) || url.includes(keyword);
+                        })
+                        .sort((a, b) => {
+                            const folderOrderA = a.folderId ? (folderOrderMap.get(a.folderId) ?? Number.MAX_SAFE_INTEGER) : -1;
+                            const folderOrderB = b.folderId ? (folderOrderMap.get(b.folderId) ?? Number.MAX_SAFE_INTEGER) : -1;
+                            if (folderOrderA !== folderOrderB) {
+                                return folderOrderA - folderOrderB;
+                            }
+                            const containerOrderA = a.folderId ? orderValue(a.folderOrder) : orderValue(a.homeOrder);
+                            const containerOrderB = b.folderId ? orderValue(b.folderOrder) : orderValue(b.homeOrder);
+                            if (containerOrderA !== containerOrderB) {
+                                return containerOrderA - containerOrderB;
+                            }
+                            return a.name.localeCompare(b.name, 'zh');
+                        });
+
+                    siteMatches.forEach(site => {
+                        const tile = createSiteTile(site, site.folderId, { disableDrag: true, isSearchResult: true });
+                        elements.homeGrid.appendChild(tile);
+                        renderCount += 1;
+                    });
+
+                    elements.emptyHint.hidden = renderCount !== 0;
+                    return;
+                }
+
+                entries.forEach(entry => {
+                    if (entry.type === 'folder') {
+                        const folder = entry.entity;
+                        elements.homeGrid.appendChild(createFolderTile(folder));
+                        renderCount += 1;
+                    } else if (entry.type === 'site') {
+                        const site = entry.entity;
+                        elements.homeGrid.appendChild(createSiteTile(site, null));
+                        renderCount += 1;
+                    }
+                });
+
+                elements.emptyHint.hidden = renderCount !== 0;
+            }
+
+            function renderFolderGrid() {
+                if (!state.activeFolderId) return;
+                const folder = state.folders.find(f => f.id === state.activeFolderId);
+                if (!folder) {
+                    closeFolderPanel();
+                    return;
+                }
+                elements.folderTitle.textContent = folder.name;
+                elements.folderGrid.dataset.container = `folder:${state.activeFolderId}`;
+                const sites = normalizeFolderOrder(state.activeFolderId);
+
+                elements.folderGrid.innerHTML = '';
+                sites.forEach(site => {
+                    elements.folderGrid.appendChild(createSiteTile(site, state.activeFolderId));
+                });
+
+                elements.folderEmptyHint.hidden = sites.length !== 0;
+            }
+
+            function createSiteTile(site, containerId = null, options = {}) {
+                const tile = document.createElement('div');
+                tile.className = 'tile site';
+                tile.dataset.id = site.id;
+                tile.dataset.type = 'site';
+                tile.dataset.container = containerId ? `folder:${containerId}` : 'home';
+                tile.dataset.order = containerId ? orderValue(site.folderOrder) : orderValue(site.homeOrder);
+                const disableDrag = options.disableDrag === true;
+                const isSearchResult = options.isSearchResult === true;
+                const folder = site.folderId ? state.folders.find(f => f.id === site.folderId) : null;
+
+                tile.draggable = !disableDrag;
+                const favicon = getFavicon(site.url);
+
+                const folderMeta = isSearchResult && folder
+                    ? `<small class="tile-meta">文件夹：${escapeHtml(folder.name)}</small>`
+                    : '';
+
+                tile.innerHTML = `
+                    <div class="tile-quick-actions">
+                        <button data-action="edit-site" draggable="false" title="编辑" aria-label="编辑"><span>✎</span></button>
+                        <button data-action="delete-site" draggable="false" title="删除" aria-label="删除"><span>✕</span></button>
+                    </div>
+                    <div class="tile-icon">
+                        <img src="${favicon}" alt="${escapeHtml(site.name)} 图标">
+                    </div>
+                    <label title="${escapeHtml(site.name)}">${escapeHtml(site.name)}</label>
+                    <small title="${escapeHtml(site.url)}" dir="ltr">${escapeHtml(site.url)}</small>
+                    ${folderMeta}
+                `;
+
+                const iconImg = tile.querySelector('img');
+                const iconWrapper = tile.querySelector('.tile-icon');
+                iconImg.addEventListener('error', () => {
+                    iconImg.remove();
+                    applyFallbackIcon(iconWrapper, site.name || site.url);
+                }, { once: true });
+
+                if (!disableDrag) {
+                    addTileDragHandlers(tile);
+                } else {
+                    tile.classList.add('non-draggable');
+                }
+
+                return tile;
+            }
+
+            function createFolderTile(folder, options = {}) {
+                const tile = document.createElement('div');
+                tile.className = 'tile folder';
+                tile.dataset.id = folder.id;
+                tile.dataset.type = 'folder';
+                tile.dataset.container = 'home';
+                tile.dataset.order = orderValue(folder.homeOrder);
+                const disableDrag = options.disableDrag === true;
+                tile.draggable = !disableDrag;
+                const count = state.items.filter(item => item.folderId === folder.id).length;
+
+                tile.innerHTML = `
+                    <div class="tile-quick-actions">
+                        <button data-action="edit-folder" draggable="false" title="重命名" aria-label="重命名"><span>✎</span></button>
+                        <button data-action="delete-folder" draggable="false" title="删除" aria-label="删除"><span>✕</span></button>
+                    </div>
+                    <div class="tile-icon"></div>
+                    <label title="${escapeHtml(folder.name)}">${escapeHtml(folder.name)}</label>
+                    <small>${count} 个项目</small>
+                `;
+
+                if (!disableDrag) {
+                    addTileDragHandlers(tile);
+                } else {
+                    tile.classList.add('non-draggable');
+                }
+
+                return tile;
+            }
+
+            function addTileDragHandlers(tile) {
+                tile.addEventListener('dragstart', handleTileDragStart);
+                tile.addEventListener('dragend', handleTileDragEnd);
+                tile.addEventListener('dragover', handleTileDragOver);
+                tile.addEventListener('dragleave', handleTileDragLeave);
+                tile.addEventListener('drop', handleTileDrop);
+            }
+
+            function createPlaceholder(tile) {
+                const placeholder = document.createElement('div');
+                placeholder.className = 'tile drop-placeholder';
+                placeholder.style.height = `${tile.offsetHeight}px`;
+                placeholder.style.width = `${tile.offsetWidth}px`;
+                placeholder.setAttribute('aria-hidden', 'true');
+                return placeholder;
+            }
+
+            function updateDropPreview(tile, position) {
+                const ctx = state.dragContext;
+                if (!ctx) return;
+                if (ctx.previewEl && ctx.previewEl !== tile) {
+                    ctx.previewEl.classList.remove('drop-target', 'drop-before', 'drop-after', 'drop-into');
+                }
+                tile.classList.add('drop-target');
+                tile.classList.toggle('drop-before', position === 'before');
+                tile.classList.toggle('drop-after', position === 'after');
+                tile.classList.toggle('drop-into', position === 'into');
+                const placeholder = ctx.placeholder;
+                if (placeholder) {
+                    const containerEl = tile.parentElement;
+                    if (containerEl && containerEl.classList.contains('grid')) {
+                        placeholder.style.height = `${tile.offsetHeight}px`;
+                        placeholder.style.width = `${tile.offsetWidth}px`;
+                        if (placeholder.parentElement !== containerEl) {
+                            containerEl.insertBefore(placeholder, tile);
+                        }
+                        if (position === 'before') {
+                            placeholder.style.display = '';
+                            containerEl.insertBefore(placeholder, tile);
+                        } else if (position === 'after') {
+                            placeholder.style.display = '';
+                            containerEl.insertBefore(placeholder, tile.nextSibling);
+                        } else {
+                            placeholder.style.display = 'none';
+                        }
+                    }
+                }
+                ctx.previewEl = tile;
+                ctx.preview = {
+                    position,
+                    targetId: tile.dataset.id,
+                    targetType: tile.dataset.type,
+                    container: tile.dataset.container || 'home'
+                };
+            }
+
+            function clearDropPreview(tile = null) {
+                const ctx = state.dragContext;
+                if (!ctx) return;
+                const target = tile || ctx.previewEl;
+                if (target) {
+                    target.classList.remove('drop-target', 'drop-before', 'drop-after', 'drop-into');
+                }
+                if (ctx.placeholder) {
+                    ctx.placeholder.style.display = '';
+                }
+                ctx.preview = null;
+                ctx.previewEl = null;
+            }
+
+            function computeDropPosition(event, tile, ctx) {
+                const rect = tile.getBoundingClientRect();
+                const offsetX = event.clientX - rect.left;
+                const offsetY = event.clientY - rect.top;
+                const ratioX = rect.width ? offsetX / rect.width : 0.5;
+                const ratioY = rect.height ? offsetY / rect.height : 0.5;
+                const targetType = tile.dataset.type;
+                const container = parseContainer(tile.dataset.container || 'home');
+
+                if (ctx.type === 'site' && targetType === 'folder' && container.type === 'home') {
+                    if (ratioX > 0.28 && ratioX < 0.72 && ratioY > 0.28 && ratioY < 0.72) {
+                        return 'into';
+                    }
+                }
+
+                if (ratioY < 0.5) {
+                    return 'before';
+                }
+                return 'after';
+            }
+
+            function handleTileDragStart(event) {
+                const tile = event.currentTarget;
+                const type = tile.dataset.type;
+                const id = tile.dataset.id;
+                const container = tile.dataset.container || 'home';
+                state.dragContext = {
+                    type,
+                    id,
+                    originContainer: container,
+                    preview: null,
+                    previewEl: null,
+                    placeholder: null,
+                    dragTile: tile,
+                    originalDisplay: tile.style.display
+                };
+                tile.classList.add('dragging');
+                if (event.dataTransfer) {
+                    event.dataTransfer.effectAllowed = 'move';
+                    event.dataTransfer.setData('text/plain', id);
+                    const dragImage = tile.cloneNode(true);
+                    dragImage.style.position = 'absolute';
+                    dragImage.style.top = '-9999px';
+                    dragImage.style.left = '-9999px';
+                    dragImage.style.width = `${tile.offsetWidth}px`;
+                    dragImage.style.height = `${tile.offsetHeight}px`;
+                    dragImage.style.pointerEvents = 'none';
+                    document.body.appendChild(dragImage);
+                    state.dragContext.dragImageEl = dragImage;
+                    event.dataTransfer.setDragImage(dragImage, tile.offsetWidth / 2, tile.offsetHeight / 2);
+                }
+                const placeholder = createPlaceholder(tile);
+                state.dragContext.placeholder = placeholder;
+                const parent = tile.parentElement;
+                if (parent) {
+                    parent.insertBefore(placeholder, tile.nextSibling);
+                }
+                requestAnimationFrame(() => {
+                    tile.classList.add('drag-hidden');
+                });
+            }
+
+            function handleTileDragEnd() {
+                clearDragState();
+            }
+
+            function handleTileDragOver(event) {
+                const tile = event.currentTarget;
+                const ctx = state.dragContext;
+                if (!ctx) return;
+                if (!canDropOnTile(tile)) {
+                    tile.classList.remove('drop-target', 'drop-before', 'drop-after', 'drop-into');
+                    if (ctx.previewEl === tile) {
+                        clearDropPreview(tile);
+                    }
+                    return;
+                }
+
+                const position = computeDropPosition(event, tile, ctx);
+                updateDropPreview(tile, position);
+                event.preventDefault();
+                if (event.dataTransfer) {
+                    event.dataTransfer.dropEffect = 'move';
+                }
+            }
+
+            function handleTileDragLeave(event) {
+                const tile = event.currentTarget;
+                tile.classList.remove('drop-target', 'drop-before', 'drop-after', 'drop-into');
+                if (state.dragContext && state.dragContext.previewEl === tile) {
+                    clearDropPreview(tile);
+                }
+            }
+
+            function handleTileDrop(event) {
+                const tile = event.currentTarget;
+                if (!canDropOnTile(tile)) {
+                    clearDragState();
+                    return;
+                }
+
+                event.preventDefault();
+                tile.classList.remove('drop-target', 'drop-before', 'drop-after', 'drop-into');
+
+                const ctx = state.dragContext;
+                if (!ctx) {
+                    clearDragState();
+                    return;
+                }
+
+                const targetType = tile.dataset.type;
+                const targetId = tile.dataset.id;
+                const targetContainer = parseContainer(tile.dataset.container || 'home');
+                let preview = ctx.preview;
+                if (!preview || preview.targetId !== targetId) {
+                    const position = computeDropPosition(event, tile, ctx);
+                    preview = {
+                        position,
+                        targetId,
+                        targetType,
+                        container: tile.dataset.container || 'home'
+                    };
+                }
+                clearDropPreview(tile);
+
+                if (ctx.type === 'folder') {
+                    if (targetContainer.type === 'home' && !(targetType === ctx.type && targetId === ctx.id)) {
+                        const position = preview.position === 'after' ? 'after' : 'before';
+                        reorderHomeEntries('folder', ctx.id, targetType, targetId, position);
+                        saveState();
+                        renderAll();
+                    }
+                } else if (ctx.type === 'site') {
+                    handleSiteDropOnTile(ctx, targetType, targetId, targetContainer, preview.position);
+                }
+
+                clearDragState();
+            }
+
+            function handleSiteDropOnTile(ctx, targetType, targetId, targetContainer, positionHint = 'before') {
+                const site = state.items.find(item => item.id === ctx.id);
+                if (!site) {
+                    return;
+                }
+
+                const originContainer = parseContainer(ctx.originContainer || 'home');
+
+                if (targetType === 'folder' && targetContainer.type === 'home') {
+                    if (positionHint === 'into') {
+                        moveSiteIntoFolder(site.id, targetId);
+                        saveState();
+                        renderAll();
+                        return;
+                    }
+                    if (originContainer.type !== 'home') {
+                        moveSiteToHome(site.id);
+                    }
+                    const position = positionHint === 'after' ? 'after' : 'before';
+                    reorderHomeEntries('site', site.id, 'folder', targetId, position);
+                    saveState();
+                    renderAll();
+                    return;
+                }
+
+                if (targetType === 'site') {
+                    if (targetContainer.type === 'home') {
+                        if (originContainer.type !== 'home') {
+                            moveSiteToHome(site.id);
+                        }
+                        const position = positionHint === 'after' ? 'after' : 'before';
+                        reorderHomeEntries('site', site.id, 'site', targetId, position);
+                        saveState();
+                        renderAll();
+                        return;
+                    }
+
+                    if (targetContainer.type === 'folder') {
+                        const folderId = targetContainer.id;
+                        if (originContainer.type !== 'folder' || originContainer.id !== folderId) {
+                            if (positionHint === 'after') {
+                                const nextSiteId = getNextSiteId(folderId, targetId);
+                                moveSiteIntoFolder(site.id, folderId, nextSiteId, 'before');
+                            } else {
+                                moveSiteIntoFolder(site.id, folderId, targetId, 'before');
+                            }
+                        }
+                        const position = positionHint === 'after' ? 'after' : 'before';
+                        reorderFolderSites(folderId, site.id, targetId, position);
+                        saveState();
+                        renderFolderGrid();
+                        renderHome();
+                        return;
+                    }
+                }
+            }
+
+            function handleGridDragEnter(event) {
+                const grid = event.currentTarget;
+                const container = parseContainer(grid.dataset.container || 'home');
+                if (!canDropOnContainer(container)) {
+                    return;
+                }
+                clearDropPreview();
+                const depth = parseInt(grid.dataset.dragDepth || '0', 10) + 1;
+                grid.dataset.dragDepth = String(depth);
+                grid.classList.add('drop-accepting');
+                placePlaceholderAtEnd(grid);
+            }
+
+            function handleGridDragLeave(event) {
+                const grid = event.currentTarget;
+                if (!grid.dataset.dragDepth) return;
+                const depth = Math.max(0, parseInt(grid.dataset.dragDepth, 10) - 1);
+                if (depth === 0) {
+                    grid.classList.remove('drop-accepting');
+                    delete grid.dataset.dragDepth;
+                } else {
+                    grid.dataset.dragDepth = String(depth);
+                }
+            }
+
+            function handleGridDragOver(event) {
+                const grid = event.currentTarget;
+                const container = parseContainer(grid.dataset.container || 'home');
+                if (canDropOnContainer(container)) {
+                    const ctx = state.dragContext;
+                    if (ctx && ctx.placeholder) {
+                        if (ctx.placeholder.parentElement !== grid || ctx.placeholder.style.display === 'none') {
+                            placePlaceholderAtEnd(grid);
+                        }
+                    }
+                    event.preventDefault();
+                    if (event.dataTransfer) {
+                        event.dataTransfer.dropEffect = 'move';
+                    }
+                }
+            }
+
+            function handleGridDrop(event) {
+                const grid = event.currentTarget;
+                const container = parseContainer(grid.dataset.container || 'home');
+                if (!canDropOnContainer(container)) {
+                    clearDragState();
+                    return;
+                }
+
+                event.preventDefault();
+                grid.classList.remove('drop-accepting');
+                delete grid.dataset.dragDepth;
+                clearDropPreview();
+
+                const ctx = state.dragContext;
+                if (!ctx) {
+                    clearDragState();
+                    return;
+                }
+
+                const placeholder = ctx.placeholder;
+                const originContainer = parseContainer(ctx.originContainer || 'home');
+
+                if (ctx.type === 'folder' && container.type === 'home') {
+                    let handled = false;
+                    if (placeholder && placeholder.parentElement === grid && placeholder.style.display !== 'none') {
+                        const nextTile = findNextActualTile(placeholder);
+                        if (nextTile) {
+                            reorderHomeEntries('folder', ctx.id, nextTile.dataset.type, nextTile.dataset.id, 'before');
+                        } else {
+                            moveHomeEntryToEnd('folder', ctx.id);
+                        }
+                        handled = true;
+                    }
+                    if (!handled) {
+                        moveHomeEntryToEnd('folder', ctx.id);
+                    }
+                    saveState();
+                    renderAll();
+                    clearDragState();
+                    return;
+                }
+
+                if (ctx.type === 'site') {
+                    if (container.type === 'home') {
+                        if (placeholder && placeholder.parentElement === grid && placeholder.style.display !== 'none') {
+                            const nextTile = findNextActualTile(placeholder);
+                            if (nextTile) {
+                                if (originContainer.type !== 'home') {
+                                    moveSiteToHome(ctx.id);
+                                }
+                                reorderHomeEntries('site', ctx.id, nextTile.dataset.type, nextTile.dataset.id, 'before');
+                            } else {
+                                if (originContainer.type !== 'home') {
+                                    moveSiteToHome(ctx.id);
+                                } else {
+                                    moveHomeEntryToEnd('site', ctx.id);
+                                }
+                            }
+                        } else {
+                            if (originContainer.type !== 'home') {
+                                moveSiteToHome(ctx.id);
+                            } else {
+                                moveHomeEntryToEnd('site', ctx.id);
+                            }
+                        }
+                        saveState();
+                        renderAll();
+                        clearDragState();
+                        return;
+                    }
+
+                    if (container.type === 'folder') {
+                        const folderId = container.id;
+                        if (placeholder && placeholder.parentElement === grid && placeholder.style.display !== 'none') {
+                            const nextTile = findNextActualTile(placeholder);
+                            if (originContainer.type !== 'folder' || originContainer.id !== folderId) {
+                                if (nextTile) {
+                                    moveSiteIntoFolder(ctx.id, folderId, nextTile.dataset.id, 'before');
+                                } else {
+                                    moveSiteIntoFolder(ctx.id, folderId);
+                                }
+                            }
+                            if (nextTile) {
+                                reorderFolderSites(folderId, ctx.id, nextTile.dataset.id, 'before');
+                            } else {
+                                moveSiteToFolderEnd(folderId, ctx.id);
+                            }
+                        } else {
+                            if (originContainer.type !== 'folder' || originContainer.id !== folderId) {
+                                moveSiteIntoFolder(ctx.id, folderId);
+                            } else {
+                                moveSiteToFolderEnd(folderId, ctx.id);
+                            }
+                        }
+                        saveState();
+                        renderFolderGrid();
+                        renderHome();
+                        clearDragState();
+                        return;
+                    }
+                }
+
+                clearDragState();
+            }
+
+            function handlePanelDragEnter(event) {
+                const panel = event.currentTarget;
+                const ctx = state.dragContext;
+                if (!ctx || ctx.type !== 'site') return;
+                const depth = parseInt(panel.dataset.dragDepth || '0', 10) + 1;
+                panel.dataset.dragDepth = String(depth);
+                panel.classList.add('drop-home');
+                clearDropPreview();
+                event.preventDefault();
+            }
+
+            function handlePanelDragLeave(event) {
+                const panel = event.currentTarget;
+                if (!panel.dataset.dragDepth) return;
+                const depth = Math.max(0, parseInt(panel.dataset.dragDepth, 10) - 1);
+                if (depth === 0) {
+                    panel.classList.remove('drop-home');
+                    delete panel.dataset.dragDepth;
+                } else {
+                    panel.dataset.dragDepth = String(depth);
+                }
+            }
+
+            function handlePanelDragOver(event) {
+                const ctx = state.dragContext;
+                if (!ctx || ctx.type !== 'site') return;
+                event.preventDefault();
+            }
+
+            function handlePanelDrop(event) {
+                const panel = event.currentTarget;
+                const ctx = state.dragContext;
+                delete panel.dataset.dragDepth;
+                panel.classList.remove('drop-home');
+                if (!ctx || ctx.type !== 'site') {
+                    clearDragState();
+                    return;
+                }
+                event.preventDefault();
+                moveSiteToHome(ctx.id);
+                saveState();
+                closeFolderPanel();
+                renderAll();
+                clearDragState();
+            }
+
+            function canDropOnTile(tile) {
+                const ctx = state.dragContext;
+                if (!ctx) return false;
+                const targetType = tile.dataset.type;
+                const targetId = tile.dataset.id;
+                const targetContainer = parseContainer(tile.dataset.container || 'home');
+
+                if (ctx.type === 'folder') {
+                    if (targetContainer.type !== 'home') return false;
+                    if (targetType === 'folder' && targetId === ctx.id) return false;
+                    return true;
+                }
+
+                if (ctx.type === 'site') {
+                    if (targetType === 'folder' && targetContainer.type === 'home') {
+                        return true;
+                    }
+                    if (targetType === 'site') {
+                        if (targetId === ctx.id) return false;
+                        return true;
+                    }
+                }
+
+                return false;
+            }
+
+            function canDropOnContainer(container) {
+                const ctx = state.dragContext;
+                if (!ctx) return false;
+                if (ctx.type === 'folder') {
+                    return container.type === 'home';
+                }
+                if (ctx.type === 'site') {
+                    return container.type === 'home' || container.type === 'folder';
+                }
+                return false;
+            }
+
+            function moveHomeEntryToEnd(type, id) {
+                const entries = normalizeHomeOrder();
+                const index = entries.findIndex(entry => entry.type === type && entry.entity.id === id);
+                if (index === -1) return;
+                const [entry] = entries.splice(index, 1);
+                entries.push(entry);
+                applyHomeOrder(entries);
+            }
+
+            function getNextSiteId(folderId, siteId) {
+                const items = normalizeFolderOrder(folderId);
+                const idx = items.findIndex(item => item.id === siteId);
+                const next = items[idx + 1];
+                return next ? next.id : null;
+            }
+
+            function moveSiteToHome(siteId) {
+                const site = state.items.find(item => item.id === siteId);
+                if (!site) return;
+                const previousFolder = site.folderId;
+                site.folderId = null;
+                site.folderOrder = undefined;
+                const homeItemsCount = state.items.filter(item => !item.folderId && item.id !== siteId).length;
+                site.homeOrder = homeItemsCount;
+                normalizeHomeOrder();
+                if (previousFolder) {
+                    normalizeFolderOrder(previousFolder);
+                }
+            }
+
+            function moveSiteIntoFolder(siteId, folderId, anchorSiteId = null, position = 'after') {
+                const site = state.items.find(item => item.id === siteId);
+                if (!site) return;
+                const previousFolder = site.folderId;
+                site.folderId = folderId;
+                site.homeOrder = undefined;
+                const items = state.items
+                    .filter(item => item.folderId === folderId && item.id !== siteId)
+                    .sort((a, b) => orderValue(a.folderOrder) - orderValue(b.folderOrder));
+                let insertIndex = items.length;
+                if (anchorSiteId) {
+                    const targetIndex = items.findIndex(item => item.id === anchorSiteId);
+                    if (targetIndex !== -1) {
+                        insertIndex = position === 'before' ? targetIndex : targetIndex + 1;
+                    }
+                }
+                items.splice(insertIndex, 0, site);
+                items.forEach((item, index) => {
+                    item.folderOrder = index;
+                });
+                if (previousFolder && previousFolder !== folderId) {
+                    normalizeFolderOrder(previousFolder);
+                }
+                normalizeHomeOrder();
+            }
+
+            function reorderHomeEntries(dragType, dragId, targetType, targetId, position = 'before') {
+                const entries = normalizeHomeOrder();
+                const fromIndex = entries.findIndex(entry => entry.type === dragType && entry.entity.id === dragId);
+                const toIndex = entries.findIndex(entry => entry.type === targetType && entry.entity.id === targetId);
+                if (fromIndex === -1 || toIndex === -1) return;
+                const [entry] = entries.splice(fromIndex, 1);
+                let insertIndex = toIndex;
+                if (position === 'after') {
+                    insertIndex = toIndex + 1;
+                }
+                if (fromIndex < insertIndex) {
+                    insertIndex -= 1;
+                }
+                entries.splice(insertIndex, 0, entry);
+                applyHomeOrder(entries);
+            }
+
+            function applyHomeOrder(entries) {
+                entries.forEach((entry, index) => {
+                    entry.entity.homeOrder = index;
+                });
+            }
+
+            function reorderFolderSites(folderId, siteId, targetSiteId, position = 'before') {
+                const items = normalizeFolderOrder(folderId);
+                const fromIndex = items.findIndex(item => item.id === siteId);
+                const toIndex = items.findIndex(item => item.id === targetSiteId);
+                if (fromIndex === -1 || toIndex === -1) return;
+                const [site] = items.splice(fromIndex, 1);
+                let insertIndex = toIndex;
+                if (position === 'after') {
+                    insertIndex = toIndex + 1;
+                }
+                if (fromIndex < insertIndex) {
+                    insertIndex -= 1;
+                }
+                items.splice(insertIndex, 0, site);
+                items.forEach((item, index) => {
+                    item.folderOrder = index;
+                });
+            }
+
+            function clearDragState() {
+                const ctx = state.dragContext;
+                clearDropPreview();
+                document.querySelectorAll('.tile.dragging').forEach(el => el.classList.remove('dragging'));
+                document.querySelectorAll('.tile.drop-target').forEach(el => el.classList.remove('drop-target'));
+                document.querySelectorAll('.tile.drop-before, .tile.drop-after, .tile.drop-into').forEach(el => el.classList.remove('drop-before', 'drop-after', 'drop-into'));
+                clearGridHighlights();
+                elements.folderPanel.classList.remove('drop-home');
+                delete elements.folderPanel.dataset.dragDepth;
+                if (ctx) {
+                    if (ctx.placeholder && ctx.placeholder.parentElement) {
+                        ctx.placeholder.parentElement.removeChild(ctx.placeholder);
+                    }
+                    if (ctx.dragTile) {
+                        ctx.dragTile.classList.remove('drag-hidden');
+                        ctx.dragTile.style.display = ctx.originalDisplay || '';
+                    }
+                    if (ctx.dragImageEl && ctx.dragImageEl.parentNode) {
+                        ctx.dragImageEl.parentNode.removeChild(ctx.dragImageEl);
+                    }
+                }
+                state.dragContext = null;
+            }
+
+            function clearGridHighlights() {
+                [elements.homeGrid, elements.folderGrid].forEach(grid => {
+                    if (!grid) return;
+                    grid.classList.remove('drop-accepting');
+                    delete grid.dataset.dragDepth;
+                });
+            }
+
+            function placePlaceholderAtEnd(grid) {
+                const ctx = state.dragContext;
+                if (!ctx || !ctx.placeholder || !grid) return;
+                const placeholder = ctx.placeholder;
+                placeholder.style.display = '';
+                if (placeholder.parentElement !== grid) {
+                    grid.appendChild(placeholder);
+                } else if (placeholder !== grid.lastElementChild) {
+                    grid.appendChild(placeholder);
+                }
+            }
+
+            function findNextActualTile(node) {
+                let current = node ? node.nextElementSibling : null;
+                while (current) {
+                    if (!current.classList.contains('drop-placeholder')) {
+                        return current;
+                    }
+                    current = current.nextElementSibling;
+                }
+                return null;
+            }
+
+            function moveSiteToFolderEnd(folderId, siteId) {
+                const items = normalizeFolderOrder(folderId);
+                if (items.length === 0) return;
+                const lastItem = items[items.length - 1];
+                if (!lastItem || lastItem.id === siteId) {
+                    return;
+                }
+                reorderFolderSites(folderId, siteId, lastItem.id, 'after');
+            }
+
+            function parseContainer(value) {
+                if (!value || value === 'home') {
+                    return { key: 'home', type: 'home', id: null };
+                }
+                if (value.startsWith('folder:')) {
+                    return { key: value, type: 'folder', id: value.slice(7) };
+                }
+                return { key: value, type: 'unknown', id: null };
+            }
+
+            function applyBackground() {
+                const background = state.background;
+                if (!background || !background.type) {
+                    document.documentElement.style.setProperty('--app-background', DEFAULT_BACKGROUND);
+                    document.body.classList.remove('custom-image');
+                    document.body.style.background = DEFAULT_BACKGROUND;
+                    return;
+                }
+
+                if (background.type === 'gradient') {
+                    document.documentElement.style.setProperty('--app-background', background.value);
+                    document.body.classList.remove('custom-image');
+                    document.body.style.background = background.value;
+                } else if (background.type === 'image') {
+                    document.body.classList.add('custom-image');
+                    document.documentElement.style.setProperty('--app-background', DEFAULT_BACKGROUND);
+                    document.body.style.background = `url('${background.value}') center/cover no-repeat fixed`;
+                }
+            }
+
+            function handleBackgroundSubmit(event) {
+                event.preventDefault();
+                const url = elements.backgroundUrl.value.trim();
+                if (!url) {
+                    showToast('请输入有效的图片地址');
+                    return;
+                }
+                state.background = { type: 'image', value: url };
+                applyBackground();
+                saveState();
+                closeModal('backgroundModal');
+                showToast('已应用自定义背景');
+            }
+
+            function resetBackground() {
+                state.background = null;
+                applyBackground();
+                saveState();
+                elements.backgroundUrl.value = '';
+                showToast('已恢复默认背景');
+            }
+
+            function openModal(id) {
+                const modal = document.getElementById(id);
+                if (!modal) return;
+                modal.classList.add('open');
+            }
+
+            function closeModal(id) {
+                const modal = document.getElementById(id);
+                if (!modal) return;
+                modal.classList.remove('open');
+                if (id === 'siteModal') {
+                    state.editingSiteId = null;
+                } else if (id === 'folderModal') {
+                    state.editingFolderId = null;
+                }
+            }
+
+            function toggleEditMode() {
+                state.editMode = !state.editMode;
+                document.body.classList.toggle('editing', state.editMode);
+                updateEditToggle();
+            }
+
+            function updateEditToggle() {
+                if (!elements.editToggle) return;
+                const active = state.editMode;
+                const label = active ? '退出编辑模式' : '进入编辑模式';
+                elements.editToggle.dataset.active = active ? 'true' : 'false';
+                elements.editToggle.setAttribute('aria-pressed', String(active));
+                elements.editToggle.setAttribute('aria-label', label);
+                elements.editToggle.title = label;
+                elements.editToggle.innerHTML = `<span class="sr-only">${label}</span>${ICONS[active ? 'done' : 'edit']}`;
+            }
+
+            function showToast(message) {
+                clearTimeout(state.toastTimer);
+                elements.toast.textContent = message;
+                elements.toast.classList.add('show');
+                state.toastTimer = setTimeout(() => {
+                    elements.toast.classList.remove('show');
+                }, 2400);
+            }
+
+            function generateId() {
+                if (window.crypto && window.crypto.randomUUID) {
+                    return crypto.randomUUID();
+                }
+                return 'id-' + Math.random().toString(36).slice(2, 10);
+            }
+
+            function getFavicon(url) {
+                try {
+                    const parsed = new URL(url);
+                    return `${parsed.origin}/favicon.ico`;
+                } catch (error) {
+                    return '';
+                }
+            }
+
+            function applyFallbackIcon(wrapper, textSource) {
+                if (!wrapper) return;
+                wrapper.classList.add('fallback');
+                wrapper.setAttribute('data-initials', getInitials(textSource));
+            }
+
+            function getInitials(text) {
+                if (!text) return 'WS';
+                const normalized = text
+                    .replace(/https?:\/\//i, '')
+                    .replace(/www\./i, '')
+                    .replace(/[^a-zA-Z0-9\u4e00-\u9fa5]+/g, ' ')
+                    .trim();
+                if (!normalized) return 'WS';
+
+                const parts = normalized.split(/\s+/);
+                let initials = '';
+                for (const part of parts) {
+                    if (!part) continue;
+                    const firstLetter = part[0];
+                    if (/[a-zA-Z]/.test(firstLetter)) {
+                        initials += firstLetter.toUpperCase();
+                    } else {
+                        initials += part.slice(0, 1);
+                    }
+                    if (initials.length >= 2) break;
+                }
+                return initials.slice(0, 2) || 'WS';
+            }
+
+            function escapeHtml(str) {
+                return String(str)
+                    .replace(/&/g, '&amp;')
+                    .replace(/"/g, '&quot;')
+                    .replace(/</g, '&lt;')
+                    .replace(/>/g, '&gt;');
+            }
+
+            document.addEventListener('keydown', (event) => {
+                if (event.key === 'Escape') {
+                    ['siteModal', 'folderModal', 'backgroundModal'].forEach(closeModal);
+                    closeFolderPanel();
+                    clearDragState();
+                }
+            });
+
+            init();
+        })();
+    </script>
+</body>
+</html>
